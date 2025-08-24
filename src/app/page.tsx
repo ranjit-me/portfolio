@@ -1,12 +1,11 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import { 
   Mail, 
   Linkedin, 
@@ -14,7 +13,9 @@ import {
   ExternalLink, 
   MapPin, 
   Calendar,
-  Award,
+  Phone,
+  Twitter,
+  ChevronUp,
   Trophy,
   Code,
   Database,
@@ -34,72 +35,80 @@ import {
   Target,
   MessageCircle,
   Rocket,
-  Clock,
   CheckCircle,
   Sparkles,
-  Filter,
-  Search,
-  Calculator,
   Palette,
-  Smartphone,
-  Monitor,
   Layers,
   BarChart3,
   Heart,
-  ChevronDown,
-  ChevronUp,
   CalendarDays,
   MapPinned,
   Briefcase as BriefcaseIcon,
   Timer,
   Activity,
   Settings,
-  Grid3X3,
-  List,
-  ArrowUpDown,
-  Maximize2,
-  TrendingDown,
-  TrendingUp as TrendingUpIcon,
-  Calendar as CalendarIcon,
-  User,
-  Users2,
   FolderOpen,
-  CheckCircle2,
   AlertCircle,
   Layout,
-  Share2,
   BookOpen,
   GraduationCap,
   Shield,
-  Bot,
-  Brain,
   Network,
-  Workflow,
-  FileText,
-  PresentationChart,
+  // ...existing code...
+  // ...existing code...
+  // ...existing code...
   Eye,
-  UserCheck
+  // ...existing code...
 } from "lucide-react";
 import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
-import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
+import { motion, useScroll, useTransform, AnimatePresence, easeInOut, easeOut } from 'motion/react';
 
 export default function App() {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(false); // Set light mode as default
   const [typedText, setTypedText] = useState("");
   const [currentRole, setCurrentRole] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedProject, setSelectedProject] = useState(0);
   const [activeExperience, setActiveExperience] = useState(0);
-  const [projectView, setProjectView] = useState("grid");
-  const [sortBy, setSortBy] = useState("year");
   const [activeSkillTab, setActiveSkillTab] = useState("backend");
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   
   const { scrollYProgress } = useScroll();
   const backgroundY = useTransform(scrollYProgress, [0, 1], ['0%', '100%']);
   const heroRef = useRef(null);
 
-  const roles = ["Java Developer", "Full Stack Engineer", "Backend Specialist", "Cloud Architect"];
+  // Move roles array inside useMemo to avoid changing deps
+  const roles = useMemo(() => [
+    "Java Developer", 
+    "Full Stack Engineer", 
+    "Backend Specialist", 
+    "Cloud Architect"
+  ], []);
+
+  // Download Resume function
+  const downloadResume = () => {
+    const link = document.createElement('a');
+    link.href = '/Resume.pdf';
+    link.download = 'Ranjit_Bichukale_Resume.pdf';
+    link.click();
+  };
+
+  // Copy email function
+  const copyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText('Ranjit Bichukale11@gmail.com');
+      setEmailCopied(true);
+      setTimeout(() => setEmailCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy email:', err);
+    }
+  };
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   
   useEffect(() => {
     if (darkMode) {
@@ -108,6 +117,21 @@ export default function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
+
+  // Scroll to top on page load
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  // Handle scroll for show/hide scroll-to-top button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Typing animation effect
   useEffect(() => {
@@ -133,9 +157,17 @@ export default function App() {
     }, isDeleting ? 50 : 100);
 
     return () => clearInterval(typeInterval);
-  }, [currentRole]);
+  }, [currentRole, roles]);
 
-  const skills = [
+  interface Skill {
+    name: string;
+    icon: React.ComponentType<{ className?: string }>;
+    level: number;
+    category: string;
+    color: string;
+  }
+
+  const skills: Skill[] = [
     { name: "Java", icon: Coffee, level: 80, category: "backend", color: "from-orange-500 to-red-600" },
     { name: "Spring Boot", icon: Server, level: 70, category: "backend", color: "from-green-500 to-emerald-600" },
     { name: "REST API", icon: Database, level: 75, category: "backend", color: "from-blue-500 to-indigo-600" },
@@ -160,142 +192,62 @@ export default function App() {
 
   const projects = [
     {
-      title: "AI Based Career Assistant",
-      subtitle: "Intelligent Career Guidance Platform",
-      description: "An AI-powered platform that provides personalized career guidance, skill assessments, and job recommendations using machine learning algorithms and natural language processing.",
-      longDescription: "A comprehensive AI-driven career assistance platform that leverages machine learning and NLP to provide personalized career guidance. Features include intelligent skill assessment, job market analysis, career path recommendations, and interactive chatbot for career queries.",
-      technologies: ["Python", "TensorFlow", "React.js", "Node.js"],
-      techDetails: [
-        { name: "Python", proficiency: 85, color: "from-blue-500 to-green-500", icon: Bot },
-        { name: "TensorFlow", proficiency: 80, color: "from-orange-500 to-red-500", icon: Brain },
-        { name: "React.js", proficiency: 90, color: "from-blue-500 to-cyan-500", icon: Globe },
-        { name: "Node.js", proficiency: 88, color: "from-green-500 to-emerald-500", icon: Server }
-      ],
-      github: "https://github.com/ranjit-me/ai-career-assistant",
-      demo: "#",
-      year: "2025",
-      category: "AI/ML",
-      status: "ongoing",
-      impact: "Helping 1000+ students with career decisions",
-      keyFeatures: [
-        "AI-powered skill assessment",
-        "Personalized career recommendations", 
-        "Job market trend analysis",
-        "Interactive career chatbot"
-      ],
-      challenges: [
-        "Training accurate ML models",
-        "Real-time job market data integration",
-        "Natural language processing optimization"
-      ],
-      duration: "4 months",
-      teamSize: "3 members",
-      projectImage: "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-    },
-    {
-      title: "Matrimonial Site",
+      title: "Matrimonial Website",
       subtitle: "Modern Matrimonial Platform",
-      description: "A comprehensive matrimonial platform with advanced matching algorithms, secure user profiles, and real-time communication features to help people find their perfect life partner.",
-      longDescription: "A full-featured matrimonial website built with modern web technologies. Includes advanced search filters, compatibility matching, secure messaging system, profile verification, and premium membership features.",
-      technologies: ["React.js", "Node.js", "MongoDB", "Socket.io"],
+      description: "A comprehensive matrimonial platform with advanced matching algorithms, secure user profiles,  features to help people find their perfect life partner.",
+      longDescription: "A full-featured matrimonial website built with  web technologies. Includes advanced search filters, compatibility matching, profile verification, and premium membership features.",
+      technologies: ["PHP", "CSS", "MySQL", "XAMPP"],
       techDetails: [
-        { name: "React.js", proficiency: 92, color: "from-blue-500 to-cyan-500", icon: Globe },
-        { name: "Node.js", proficiency: 88, color: "from-green-500 to-emerald-500", icon: Server },
-        { name: "MongoDB", proficiency: 85, color: "from-green-600 to-green-800", icon: Database },
-        { name: "Socket.io", proficiency: 80, color: "from-purple-500 to-pink-500", icon: Network }
+        { name: "PHP", proficiency: 92, color: "from-blue-500 to-cyan-500", icon: Globe },
+        { name: "CSS", proficiency: 88, color: "from-green-500 to-emerald-500", icon: Server },
+        { name: "MySQL", proficiency: 85, color: "from-green-600 to-green-800", icon: Database },
+        { name: "XAMPP", proficiency: 80, color: "from-purple-500 to-pink-500", icon: Network }
       ],
-      github: "https://github.com/ranjit-me/matrimonial-site",
+      github: "https://github.com/ranjit-me/matrimonial-website",
       demo: "#",
       year: "2024",
       category: "Web Development",
       status: "completed",
-      impact: "Connected 500+ couples successfully",
-      keyFeatures: [
-        "Advanced profile matching",
-        "Real-time messaging system", 
-        "Privacy-first approach",
-        "Mobile-responsive design"
-      ],
       challenges: [
-        "Implementing secure messaging",
-        "Building complex matching algorithms",
+        "Connecting MySQL database to PHP backend",
+        "Optimizing photo upload and storage size",
         "Ensuring user privacy and data protection"
       ],
-      duration: "5 months",
+      duration: "4 months",
       teamSize: "4 members",
       projectImage: "https://images.unsplash.com/photo-1522543558187-768b6df7c25c?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
-      title: "Vexil",
-      subtitle: "Project Management & Collaboration Tool",
-      description: "A modern project management platform that streamlines team collaboration with task tracking, real-time updates, and comprehensive analytics for improved productivity.",
-      longDescription: "Vexil is a comprehensive project management solution designed for modern teams. Features include kanban boards, time tracking, team collaboration tools, project analytics, and integration with popular development tools.",
-      technologies: ["Vue.js", "Express.js", "PostgreSQL", "Redis"],
-      techDetails: [
-        { name: "Vue.js", proficiency: 88, color: "from-green-500 to-teal-500", icon: Globe },
-        { name: "Express.js", proficiency: 85, color: "from-gray-500 to-slate-500", icon: Server },
-        { name: "PostgreSQL", proficiency: 82, color: "from-blue-600 to-indigo-600", icon: Database },
-        { name: "Redis", proficiency: 75, color: "from-red-500 to-pink-500", icon: Zap }
-      ],
-      github: "https://github.com/ranjit-me/vexil",
-      demo: "#",
-      year: "2024",
-      category: "Productivity",
-      status: "completed",
-      impact: "Increased team productivity by 40%",
-      keyFeatures: [
-        "Kanban-style task management",
-        "Real-time collaboration", 
-        "Comprehensive project analytics",
-        "Third-party integrations"
-      ],
-      challenges: [
-        "Real-time synchronization",
-        "Complex permission system",
-        "Performance optimization for large datasets"
-      ],
-      duration: "6 months",
-      teamSize: "5 members",
-      projectImage: "https://images.unsplash.com/photo-1551434678-e076c223a692?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-    },
-    {
-      title: "Portfolio-hub",
+      title: "Multi-Portfolio-Hub",
       subtitle: "Dynamic Portfolio Creation Platform",
-      description: "Designed a portfolio website where multiple users can create and customize their portfolios in under 5 minutes through a simple, user-friendly interface.",
-      longDescription: "A comprehensive platform that revolutionizes how developers create and manage their portfolios. Built with modern React architecture and Node.js backend, it features real-time customization, template selection, and instant deployment capabilities.",
-      technologies: ["React.js", "Node.js", "Express", "MongoDB"],
+      description: "Designed a portfolio website where multiple users can select templates for  their portfolios in under 5 minutes through a simple, user-friendly interface.",
+      longDescription: "A comprehensive platform that revolutionizes how developers create and manage their portfolios. Built with modern React architecture and Spring Boot for backend, it features real-time  template selection, and instant deployment capabilities.",
+      technologies: ["React.js", "Spring-Boot", "S3 Bucket", "MongoDB"],
       techDetails: [
         { name: "React.js", proficiency: 95, color: "from-blue-500 to-cyan-500", icon: Globe },
-        { name: "Node.js", proficiency: 88, color: "from-green-500 to-emerald-500", icon: Server },
-        { name: "Express", proficiency: 85, color: "from-gray-500 to-slate-500", icon: Layers },
+        { name: "Spring-Boot", proficiency: 88, color: "from-green-500 to-emerald-500", icon: Server },
+        { name: "S3 Bucket", proficiency: 85, color: "from-gray-500 to-slate-500", icon: Layers },
         { name: "MongoDB", proficiency: 82, color: "from-green-600 to-green-800", icon: Database }
       ],
-      github: "https://github.com/ranjit-me/portfolio-hub-server",
+      github: "https://github.com/ranjit-me/Multi-Portfolio-Hub",
       demo: "#",
       year: "2025",
       category: "Web Development",
       status: "completed",
-      impact: "Enabled 500+ users to create professional portfolios",
-      keyFeatures: [
-        "Real-time template preview",
-        "Easy Template Selection", 
-        "One-click deployment",
-        "SEO optimization tools"
-      ],
       challenges: [
-        "Real-time template customization",
-        "Scalable deployment system",
-        "User authentication & authorization"
+        "Connecting user schema and profile schema for authentication",
+        "Creating and managing S3 bucket connection policies",
+        "Establishing seamless frontend and backend integration"
       ],
-      duration: "2 months",
+      duration: "3 months",
       teamSize: "2 members",
       projectImage: "https://images.unsplash.com/photo-1698047681432-006d2449c631?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
       title: "Library Management System",
       subtitle: "Advanced Book Management Platform",
-      description: "A comprehensive library management system built with Java and Spring Boot. Features include book catalog management, member registration, borrowing system, and analytics dashboard.",
-      longDescription: "A robust library management solution designed to streamline library operations. Features include advanced search capabilities, automated fine calculation, digital book reservations, and comprehensive reporting system for library administrators.",
+      description: "A comprehensive library management system built with Java and Spring Boot. Features include book catalog management, borrowing system, and analytics dashboard.",
+      longDescription: "A robust library management solution designed to streamline library operations. Features include ,  digital book reservations, and comprehensive reporting system for library administrators.",
       technologies: ["Java", "Spring Boot", "Thymeleaf", "MySQL"],
       techDetails: [
         { name: "Java", proficiency: 92, color: "from-orange-500 to-red-500", icon: Coffee },
@@ -308,54 +260,44 @@ export default function App() {
       year: "2024",
       category: "Enterprise Software",
       status: "completed",
-      impact: "Managed 5000+ books and 1000+ members efficiently",
-      keyFeatures: [
-        "Advanced Book Catalog",
-        "Automated Fine System", 
-        "Member Management",
-        "Comprehensive Analytics"
-      ],
       challenges: [
-        "Complex business logic implementation",
-        "Database optimization for large datasets",
-        "User role-based access control"
+        "Integrating and managing relationships between multiple database tables"
       ],
-      duration: "3 months",
+      duration: "1.5 months",
       teamSize: "solo",
       projectImage: "https://images.unsplash.com/photo-1568667256549-094345857637?q=80&w=715&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
-      title: "Siddhanath Krushi Kendra",
-      subtitle: "Agricultural Management System",
-      description: "Developed a comprehensive agricultural management system for Siddhanath Krushi Kendra, to sell agricultural products online. The platform includes product listings.",
-      longDescription: "A robust agricultural management system designed to streamline the sale of agricultural products. Features include product listings, order management, and a user-friendly interface for farmers and customers.",
-      technologies: ["React.js", "D3.js", "Node.js", "Redis"],
+      title: "Siddhanath.shop",
+      subtitle: " Agricultural Management System",
+      description: "Developed a comprehensive agricultural management system for Siddhanath Krushi Kendra, to sell agricultural products online. The platform is now live and serving customers.",
+      longDescription: "A robust agricultural management system designed to streamline the sale of agricultural products. Features include a user-friendly interface for farmers and customers. The project is currently live and actively serving the agricultural community.",
+      technologies: ["React.js", "Tailwind CSS", "Lazy Loading"],
       techDetails: [
         { name: "React.js", proficiency: 88, color: "from-blue-500 to-cyan-500", icon: Globe },
-        { name: "D3.js", proficiency: 75, color: "from-orange-500 to-red-500", icon: BarChart3 },
-        { name: "Node.js", proficiency: 85, color: "from-green-500 to-emerald-500", icon: Server },
-        { name: "Redis", proficiency: 70, color: "from-red-500 to-pink-500", icon: Zap }
+        { name: "Tailwind CSS", proficiency: 75, color: "from-orange-500 to-red-500", icon: BarChart3 },
+        { name: "Lazy Loading", proficiency: 85, color: "from-green-500 to-emerald-500", icon: Server }
       ],
-      github: "https://github.com/ranjit-me",
-      demo: "#",
+      github: "https://github.com/ranjit-me/siddhanath.shop",
+      demo: "https://siddhanath.shop/",
       year: "2024",
-      category: "Domain-Specific",
-      status: "completed",
-      impact: "Streamlined agricultural product sales for local farmers",
+      category: "Client Project",
+      status: "live",
+      impact: "Successfully launched and serving the agricultural community with online product sales",
       keyFeatures: [
-        "Product listings",
-        "Order management", 
-        "User-friendly interface",
-        "Real-time monitoring"
+        "Product catalog management",
+        "Order processing system", 
+        "Farmer dashboard",
+        "Customer interface"
       ],
       challenges: [
-        "Real-time data processing",
-        "High-performance visualization",
-        "Scalable monitoring system"
+        "Integrating modern design with agricultural business needs",
+        "Optimizing performance for rural internet connectivity",
+        "Building user-friendly interface for diverse user groups"
       ],
-      duration: "3 months",
+      duration: "1 months",
       teamSize: "2 members",
-      projectImage: "https://images.unsplash.com/photo-1576501161309-37635f837061?q=80&w=709&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+      projectImage: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     }
   ];
 
@@ -366,30 +308,23 @@ export default function App() {
       companyLogo: "https://images.unsplash.com/photo-1586202690666-e1f32e218afe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBvZmZpY2UlMjB3b3Jrc3BhY2UlMjB0ZWNobm9sb2d5fGVufDF8fHx8MTc1NTU0NTY3OXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
       location: "Pune, India",
       period: "Jun 2025",
-      duration: "6 months",
+      duration: "1 months",
       type: "Internship",
       description: "Implemented business logic and optimized SQL queries, reducing database response time by 25%. Developed reusable backend modules using Java, enhancing code maintainability across 3 internal projects.",
       achievements: [
-        "Reduced database response time by 25%",
-        "Developed 3+ reusable backend modules",
-        "Implemented automated testing suite",
-        "Mentored 2 junior developers"
+        "Established secure and efficient database connectivity to ensure reliable data transactions.",
+        "Integrated frontend and backend through RESTful APIs for seamless data communication.",
+        "Performed API testing using tools like Postman to ensure functionality and reliability.",
       ],
       skills: ["Java", "SQL", "Spring Boot", "Performance Optimization"],
       projects: [
         {
-          name: "Customer Management System",
-          description: "Built REST APIs for customer data management",
-          impact: "Improved data retrieval speed by 40%"
-        },
-        {
-          name: "Inventory Tracking Module",
-          description: "Developed real-time inventory tracking system",
-          impact: "Reduced manual tracking time by 60%"
+          name: "Library Management System",
+          description: "Built REST APIs for student book activity management",
+          // impact: "Improved data retrieval speed by 40%"
         }
       ],
-      teamSize: "8 members",
-      technologies: ["Java 11", "Spring Boot", "MySQL", "Maven", "JUnit"],
+      technologies: [ "Spring Boot", "MongoDB", "HTML","CSS", "Postman"],
       metrics: {
         codeReview: "95%",
         bugFixes: "45+",
@@ -402,30 +337,23 @@ export default function App() {
       companyLogo: "https://images.unsplash.com/photo-1748256622734-92241ae7b43f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHhzb2Z0d2FyZSUyMGRldmVsb3BtZW50JTIwdGVhbSUyMGNvbGxhYm9yYXRpb258ZW58MXx8fHwxNzU1NTkwMDc1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
       location: "Nagpur, India",
       period: "Jan 2025",
-      duration: "4 months",
+      duration: "1 months",
       type: "Internship",
-      description: "Built 4+ full-stack apps with React.js and Node.js, boosting load speed by 30%. Collaborated remotely to deliver scalable features early.",
+      description: "Gained comprehensive experience in full-stack development with focus on frontend technologies. Learned React.js fundamentals, component architecture, Routing in React.js. Built 2+ full-stack applications using React.js .",
       achievements: [
-        "Built 4+ full-stack applications",
-        "Improved application load speed by 30%",
-        "Led a team of 3 developers",
-        "Delivered features ahead of schedule"
+        "React.js fundamentals and component lifecycle",
+        "Learned advanced route management and state handling",
+        "Built 2+ frontend applications with modern frontend practices", 
       ],
-      skills: ["React.js", "Node.js", "Full Stack", "Performance"],
+      skills: ["React.js", "Routing","Rest Api", "Node.js", "Full Stack Development"],
       projects: [
         {
-          name: "E-learning Platform",
-          description: "Developed comprehensive online learning system",
-          impact: "Served 500+ students successfully"
-        },
-        {
           name: "Task Management App",
-          description: "Created collaborative task management solution",
-          impact: "Increased team productivity by 35%"
+          description: "Created collaborative task management solution implementing advanced React patterns and efficient state management",
+          // impact: "Increased team productivity by 35% with intuitive interface"
         }
       ],
-      teamSize: "5 members",
-      technologies: ["React.js", "Node.js", "Express", "MongoDB", "Socket.io"],
+      technologies: ["React.js", "JavaScript ES6+", "Props & State Management", "Node.js", "Express", "MongoDB"],
       metrics: {
         codeReview: "98%",
         userStories: "25+",
@@ -436,36 +364,12 @@ export default function App() {
 
   const achievements = [
     {
-      title: "Power BI Hackathon Winner",
-      description: "Won 1st place for a Power BI dashboard with insights using DAX and visuals",
-      icon: Trophy,
-      date: "2024",
-      category: "Competition",
-      color: "from-yellow-500 to-orange-500"
-    },
-    {
-      title: "AWS Certified Developer",
-      description: "Achieved AWS Certified Developer Associate certification",
-      icon: Cloud,
-      date: "2024",
-      category: "Certification",
-      color: "from-orange-500 to-red-500"
-    },
-    {
-      title: "Top Performer Intern",
-      description: "Recognized as top performer during internship at Cognifyz Technologies",
+      title: "PoweBi Hackathon Winner",
+      description: "Winner of PowerBi Hackathon for innovative data visualization solution",
       icon: Star,
       date: "2025",
       category: "Award",
-      color: "from-purple-500 to-pink-500"
-    },
-    {
-      title: "Open Source Contributor",
-      description: "Active contributor to several open source projects with 50+ contributions",
-      icon: Github,
-      date: "2024",
-      category: "Achievement",
-      color: "from-gray-600 to-slate-600"
+      color: "from-yellow-400 to-orange-500"
     }
   ];
 
@@ -477,39 +381,15 @@ export default function App() {
       company: "Anvistar ITS Pvt. Ltd",
       type: "internship",
       description: "Backend development and database optimization",
-      status: "ongoing"
+      status: "completed"
     },
     {
       date: "Jan 2025",
       title: "Full Stack Development Intern", 
       company: "Cognifyz Technologies",
       type: "internship",
-      description: "Full-stack web application development",
+      description: "Frontend development with React.js, props management, and component architecture",
       status: "completed"
-    },
-    {
-      date: "Dec 2024",
-      title: "Power BI Hackathon Winner",
-      company: "Competition",
-      type: "achievement",
-      description: "1st place for innovative dashboard creation",
-      status: "completed"
-    },
-    {
-      date: "Sep 2024",
-      title: "AWS Certified Developer",
-      company: "Amazon Web Services",
-      type: "certification",
-      description: "AWS Certified Developer Associate",
-      status: "completed"
-    },
-    {
-      date: "Jun 2022",
-      title: "Started B.Tech CSE",
-      company: "Dr. D.Y. Patil College",
-      type: "education",
-      description: "Computer Science & Engineering",
-      status: "ongoing"
     }
   ];
 
@@ -531,20 +411,20 @@ export default function App() {
       opacity: 1,
       transition: {
         duration: 0.6,
-        ease: "easeOut"
+        ease: easeOut
       }
     }
   };
 
   const skillItemVariants = {
     hidden: { x: -20, opacity: 0 },
-    visible: (i) => ({
+    visible: (i: number) => ({
       x: 0,
       opacity: 1,
       transition: {
         delay: i * 0.1,
         duration: 0.5,
-        ease: "easeOut"
+        ease: easeOut
       }
     })
   };
@@ -554,12 +434,12 @@ export default function App() {
     transition: {
       duration: 4,
       repeat: Infinity,
-      ease: "easeInOut"
+      ease: easeInOut
     }
   };
 
   // Enhanced skill rendering function
-  const renderSkillItem = (skill, index) => {
+  const renderSkillItem = (skill: Skill, index: number) => {
     const IconComponent = skill.icon;
     return (
       <motion.div 
@@ -589,69 +469,6 @@ export default function App() {
                  skill.category === 'devops' ? 'DevOps' : 'Tools'}
               </div>
             </div>
-          </div>
-          <motion.span 
-            className="text-sm font-semibold text-slate-600 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            {skill.level}%
-          </motion.span>
-        </div>
-        
-        <div className="space-y-2">
-          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
-            <motion.div
-              className={`h-full rounded-full bg-gradient-to-r ${skill.color} shadow-sm relative overflow-hidden`}
-              initial={{ width: 0 }}
-              animate={{ width: `${skill.level}%` }}
-              transition={{ 
-                duration: 1.2, 
-                delay: index * 0.1 + 0.3,
-                ease: "easeOut"
-              }}
-            >
-              <motion.div
-                className="absolute inset-0 bg-white/20"
-                animate={{
-                  x: ["0%", "100%"],
-                }}
-                transition={{
-                  duration: 1.5,
-                  delay: index * 0.1 + 0.8,
-                  ease: "easeInOut"
-                }}
-              />
-            </motion.div>
-          </div>
-          
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate-500 dark:text-slate-400">Proficiency</span>
-            <motion.div 
-              className="flex gap-1"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              {[...Array(5)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    i < Math.floor(skill.level / 20) 
-                      ? 'bg-gradient-to-r ' + skill.color 
-                      : 'bg-slate-300 dark:bg-slate-600'
-                  }`}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ 
-                    delay: 0.6 + i * 0.1,
-                    type: "spring",
-                    stiffness: 300
-                  }}
-                />
-              ))}
-            </motion.div>
           </div>
         </div>
       </motion.div>
@@ -731,11 +548,11 @@ export default function App() {
                         </motion.div>
                         
                         <h1 className="text-4xl lg:text-6xl bg-gradient-to-r from-slate-900 via-blue-600 to-purple-600 dark:from-white dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-                          Hi, I'm Ranjit Bichukale
+                            Hi, I&apos;m Ranjit Bichukale
                         </h1>
                         
                         <div className="text-xl lg:text-2xl text-muted-foreground">
-                          <span>I'm a </span>
+                          <span>I&apos;m a </span>
                           <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                             {typedText}
                           </span>
@@ -750,28 +567,57 @@ export default function App() {
                       
                       <div className="flex flex-wrap justify-center gap-4">
                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                          <Button size="lg" className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg">
+                          <Button 
+                            size="lg" 
+                            className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
+                            onClick={downloadResume}
+                          >
                             <Download className="w-5 h-5" />
                             Download Resume
                           </Button>
                         </motion.div>
                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                          <Button variant="outline" size="lg" className="gap-2">
-                            <MessageCircle className="w-5 h-5" />
-                            Let's Talk
-                          </Button>
+                          <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="lg" className="gap-2">
+                                <MessageCircle className="w-5 h-5" />
+                                Let&apos;s Talk
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>Get In Touch</DialogTitle>
+                              </DialogHeader>
+                              <div className="flex items-center space-x-2">
+                                <div className="grid flex-1 gap-2">
+                                  <label htmlFor="email" className="sr-only">
+                                    Email
+                                  </label>
+                                  <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                                    <Mail className="w-4 h-4" />
+                                    <span className="font-mono text-sm">ranjitbichukale11@gmail.com</span>
+                                  </div>
+                                </div>
+                                <Button onClick={copyEmail} size="sm" className="px-3">
+                                  {emailCopied ? "Copied!" : "Copy"}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         </motion.div>
                       </div>
 
                       <div className="flex justify-center gap-4">
                         {[
                           { icon: Github, href: "https://github.com/ranjit-me", label: "GitHub" },
-                          { icon: Linkedin, href: "#", label: "LinkedIn" },
-                          { icon: Mail, href: "mailto:ranjitbichukale11@gmail.com", label: "Email" }
-                        ].map((social, index) => (
+                          { icon: Linkedin, href: "https://www.linkedin.com/in/ranjit-me/", label: "LinkedIn" },
+                          { icon: Mail, href: "mailto:Ranjit Bichukale11@gmail.com", label: "Email" }
+                        ].map((social) => (
                           <motion.a
                             key={social.label}
                             href={social.href}
+                            target={social.label !== "Email" ? "_blank" : undefined}
+                            rel={social.label !== "Email" ? "noopener noreferrer" : undefined}
                             whileHover={{ scale: 1.1, y: -2 }}
                             whileTap={{ scale: 0.95 }}
                             className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
@@ -820,20 +666,52 @@ export default function App() {
                             My Journey
                           </h3>
                           <p className="text-muted-foreground leading-relaxed mb-6">
-                            Currently pursuing B.Tech in Computer Science Engineering at Dr. D.Y. Patil Pratishthan's College of Engineering, Kolhapur. 
+                            Currently pursuing <span className="font-semibold text-blue-600 dark:text-blue-400">B.Tech in Computer Science Engineering</span> at 
+                            Dr. D.Y. Patil Pratishthan&apos;s College of Engineering, Kolhapur. 
+                          </p>
+                          
+                          <div className="space-y-4 mb-6">
+                            <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                              <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
+                                <Globe className="w-4 h-4" />
+                                Full-Stack Development
+                              </h4>
+                              <p className="text-sm text-blue-700 dark:text-blue-300">
+                                I can build complete web applications using <span className="font-medium">React.js</span> for frontend, 
+                                <span className="font-medium"> Spring Boot</span> for backend, and <span className="font-medium">MongoDB Atlas</span> as the database.
+                              </p>
+                            </div>
+                            
+                            <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                              <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2 flex items-center gap-2">
+                                <GitBranch className="w-4 h-4" />
+                                Version Control & Collaboration
+                              </h4>
+                              <p className="text-sm text-green-700 dark:text-green-300">
+                                Actively use <span className="font-medium">Git</span> and <span className="font-medium">GitHub</span> for version control, 
+                                collaborative development, and code management.
+                              </p>
+                            </div>
+                            
+                            <div className="p-4 bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                              <h4 className="font-semibold text-orange-800 dark:text-orange-300 mb-2 flex items-center gap-2">
+                                <Cloud className="w-4 h-4" />
+                                Cloud & DevOps
+                              </h4>
+                              <p className="text-sm text-orange-700 dark:text-orange-300">
+                                Experience with <span className="font-medium">AWS deployment</span> and hosting. Basic knowledge of 
+                                <span className="font-medium"> AWS services</span>, <span className="font-medium">Docker</span>, and <span className="font-medium">Jenkins</span> for CI/CD.
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <p className="text-muted-foreground leading-relaxed text-sm">
                             My passion for technology drives me to continuously learn and adapt to new challenges in the ever-evolving world of software development.
                           </p>
                         </div>
 
                         <div className="space-y-4">
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                              <Building className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <div>
-                              <h4 className="text-lg">Education</h4>
-                              <p className="text-sm text-muted-foreground">B.Tech CSE • CGPA: 7.4 • 2026</p>
-                            </div>
                           </div>
 
                           <div className="flex items-center gap-4">
@@ -1080,17 +958,33 @@ export default function App() {
                                 </div>
                               </div>
                               <div className="flex flex-col gap-2">
-                                <Badge className={`${projects[selectedProject].status === 'ongoing' ? 'bg-green-500/80' : 'bg-blue-500/80'} backdrop-blur-sm text-white border-white/20 text-xs`}>
+                                <Badge className={`${
+                                  projects[selectedProject].status === 'ongoing' ? 'bg-green-500/80' : 
+                                  projects[selectedProject].status === 'live' ? 'bg-emerald-500/80' : 
+                                  'bg-blue-500/80'
+                                } backdrop-blur-sm text-white border-white/20 text-xs`}>
                                   {projects[selectedProject].status}
                                 </Badge>
                                 <div className="flex gap-2">
-                                  <Button size="sm" variant="secondary" className="bg-white/20 backdrop-blur-sm text-white hover:bg-white/30">
-                                    <Github className="w-4 h-4" />
-                                  </Button>
-                                  {projects[selectedProject].demo !== "#" && (
-                                    <Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                                      <ExternalLink className="w-4 h-4" />
+                                  <a 
+                                    href={projects[selectedProject].github}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <Button size="sm" variant="secondary" className="bg-white/20 backdrop-blur-sm text-white hover:bg-white/30">
+                                      <Github className="w-4 h-4" />
                                     </Button>
+                                  </a>
+                                  {projects[selectedProject].demo !== "#" && (
+                                    <a 
+                                      href={projects[selectedProject].demo}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                                        <ExternalLink className="w-4 h-4" />
+                                      </Button>
+                                    </a>
                                   )}
                                 </div>
                               </div>
@@ -1111,7 +1005,7 @@ export default function App() {
                                   {projects[selectedProject].longDescription}
                                 </p>
                                 <div className="flex items-center gap-2 mb-4">
-                                  <Activity className="w-4 h-4 text-green-600" />
+                                  {/* <Activity className="w-4 h-4 text-green-600" /> */}
                                   <span className="text-green-700 dark:text-green-300">{projects[selectedProject].impact}</span>
                                 </div>
                               </div>
@@ -1133,7 +1027,7 @@ export default function App() {
                             </div>
 
                             {/* Key Features */}
-                            <div className="space-y-4">
+                            {/* <div className="space-y-4">
                               <h4 className="text-lg flex items-center gap-2">
                                 <Sparkles className="w-5 h-5 text-amber-500" />
                                 Key Features
@@ -1152,7 +1046,7 @@ export default function App() {
                                   </motion.div>
                                 ))}
                               </div>
-                            </div>
+                            </div> */}
 
                             {/* Technology Stack */}
                             <div className="space-y-4">
@@ -1178,15 +1072,6 @@ export default function App() {
                                           </div>
                                           <span>{tech.name}</span>
                                         </div>
-                                        <span className="text-sm text-muted-foreground">{tech.proficiency}%</span>
-                                      </div>
-                                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                        <motion.div
-                                          className={`h-2 rounded-full bg-gradient-to-r ${tech.color} shadow-sm`}
-                                          initial={{ width: 0 }}
-                                          animate={{ width: `${tech.proficiency}%` }}
-                                          transition={{ duration: 1, delay: techIndex * 0.1 + 0.5 }}
-                                        />
                                       </div>
                                     </motion.div>
                                   );
@@ -1226,22 +1111,28 @@ export default function App() {
               {/* Call to Action */}
               <motion.div variants={itemVariants} className="text-center mt-16">
                 <div className="space-y-6">
-                  <h3 className="text-2xl bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+                  {/* <h3 className="text-2xl bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                     Ready to Start Your Next Project?
                   </h3>
                   <p className="text-muted-foreground max-w-2xl mx-auto">
-                    Let's collaborate and bring your ideas to life with cutting-edge technology and innovative solutions.
-                  </p>
+                    Let&apos;s collaborate and bring your ideas to life with cutting-edge technology and innovative solutions.
+                  </p> */}
                   <div className="flex flex-wrap justify-center gap-4">
-                    <Button size="lg" className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg">
+                    {/* <Button size="lg" className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg">
                       <MessageCircle className="w-5 h-5" />
                       Start a Project
-                    </Button>
-                    <Button variant="outline" size="lg" className="gap-2">
-                      <Github className="w-5 h-5" />
-                      View All on GitHub
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
+                    </Button> */}
+                    <a 
+                      href="https://github.com/ranjit-me?tab=repositories"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="outline" size="lg" className="gap-2">
+                        <Github className="w-5 h-5" />
+                        View All on GitHub
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </a>
                   </div>
                 </div>
               </motion.div>
@@ -1305,6 +1196,7 @@ export default function App() {
                               {/* Timeline Dot */}
                               <div className={`absolute left-2 top-6 w-4 h-4 rounded-full border-4 border-white dark:border-slate-800 ${
                                 item.status === 'ongoing' ? 'bg-green-500' :
+                                item.status === 'live' ? 'bg-emerald-500' :
                                 item.type === 'internship' ? 'bg-purple-500' :
                                 item.type === 'achievement' ? 'bg-yellow-500' :
                                 item.type === 'certification' ? 'bg-blue-500' : 'bg-gray-500'
@@ -1404,11 +1296,11 @@ export default function App() {
                                     <div className="text-xs text-muted-foreground">Duration</div>
                                     <div className="text-sm">{experience[activeExperience].duration}</div>
                                   </div>
-                                  <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-lg">
+                                  {/* <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-lg">
                                     <Users className="w-4 h-4 text-blue-600 mx-auto mb-1" />
                                     <div className="text-xs text-muted-foreground">Team Size</div>
                                     <div className="text-sm">{experience[activeExperience].teamSize}</div>
-                                  </div>
+                                  </div> */}
                                 </div>
                               </div>
                             </div>
@@ -1426,8 +1318,8 @@ export default function App() {
                                       <h5 className="text-green-800 dark:text-green-300 text-sm">{project.name}</h5>
                                       <p className="text-xs text-muted-foreground">{project.description}</p>
                                       <div className="flex items-center gap-2 text-xs">
-                                        <Activity className="w-3 h-3 text-green-600" />
-                                        <span className="text-green-700 dark:text-green-300">{project.impact}</span>
+                                        {/* <Activity className="w-3 h-3 text-green-600" /> */}
+                                        {/* <span className="text-green-700 dark:text-green-300">{project.impact}</span> */}
                                       </div>
                                     </div>
                                   </Card>
@@ -1442,7 +1334,7 @@ export default function App() {
                                 Technologies & Tools
                               </h4>
                               <div className="flex flex-wrap gap-2">
-                                {experience[activeExperience].technologies.map((tech, techIndex) => (
+                                {experience[activeExperience].technologies.map((tech) => (
                                   <Badge 
                                     key={tech} 
                                     variant="outline" 
@@ -1514,7 +1406,7 @@ export default function App() {
                                 <h4 className="text-lg text-blue-800 dark:text-blue-300">Bachelor of Technology</h4>
                                 <p className="text-blue-700 dark:text-blue-400">Computer Science Engineering</p>
                                 <p className="text-sm text-muted-foreground">
-                                  Dr. D.Y. Patil Pratishthan's College of Engineering, Kolhapur
+                                  Dr. D.Y. Patil Pratishthan&apos;s College of Engineering, Kolhapur
                                 </p>
                               </div>
                               
@@ -1529,11 +1421,11 @@ export default function App() {
                               </div>
                               
                               <div className="grid grid-cols-2 gap-4 mt-4">
-                                <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+                                {/* <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                                   <BookOpen className="w-5 h-5 text-blue-600 mx-auto mb-1" />
                                   <div className="text-xs text-muted-foreground">Courses</div>
                                   <div className="text-sm">40+ Completed</div>
-                                </div>
+                                </div> */}
                                 <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                                   <Eye className="w-5 h-5 text-purple-600 mx-auto mb-1" />
                                   <div className="text-xs text-muted-foreground">Focus</div>
@@ -1546,15 +1438,14 @@ export default function App() {
                       </div>
                     </CardContent>
                   </Card>
-
                   {/* Enhanced Achievements Section */}
                   <Card className="backdrop-blur-md bg-white/90 dark:bg-slate-800/90 shadow-2xl border-0 overflow-hidden">
-                    <div className="relative h-24 bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500">
+                    <div className="relative h-24 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700">
                       <div className="absolute inset-0 bg-black/20" />
                       <div className="absolute bottom-4 left-6 text-white">
                         <h3 className="text-xl flex items-center gap-3">
                           <Trophy className="w-6 h-6" />
-                          Achievements & Certifications
+                          Achievements &amp; Certifications
                         </h3>
                       </div>
                     </div>
@@ -1611,9 +1502,154 @@ export default function App() {
                   </Card>
                 </div>
               </motion.div>
+              {/* ...existing code... */}
             </div>
           </motion.div>
         </section>
+
+        {/* Footer */}
+        <footer className="relative bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
+          <div className="max-w-7xl mx-auto px-4 py-12">
+            <div className="grid md:grid-cols-3 gap-8">
+              
+              {/* Contact Information */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                  Get In Touch
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
+                    <Mail className="w-5 h-5" />
+                    <a 
+                      href="mailto:Ranjit Bichukale11@gmail.com" 
+                      className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    >
+                      ranjitbichukale11@gmail.com
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
+                    <Phone className="w-5 h-5" />
+                    <span>+91 9325770012</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
+                    <MapPin className="w-5 h-5" />
+                    <span>Kolhapur, Maharashtra, India</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Social Media Links */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                  Connect With Me
+                </h3>
+                <div className="flex gap-4">
+                  <motion.a
+                    href="https://github.com/ranjit-me"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-md border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Github className="w-6 h-6 text-slate-700 dark:text-slate-300" />
+                  </motion.a>
+                  <motion.a
+                    href="https://www.linkedin.com/in/ranjit-me/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-md border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Linkedin className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  </motion.a>
+                  <motion.a
+                    href="https://twitter.com/ranjitbichukale"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-md border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Twitter className="w-6 h-6 text-sky-500 dark:text-sky-400" />
+                  </motion.a>
+                  <motion.a
+                    href="mailto:Ranjit Bichukale11@gmail.com"
+                    className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-md border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Mail className="w-6 h-6 text-red-500 dark:text-red-400" />
+                  </motion.a>
+                </div>
+              </div>
+
+              {/* Quick Links or Additional Info */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                  Quick Links
+                </h3>
+                <div className="space-y-2">
+                  <motion.div whileHover={{ x: 5 }}>
+                    <Button 
+                      variant="ghost" 
+                      className="p-0 h-auto justify-start text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
+                      onClick={downloadResume}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Resume
+                    </Button>
+                  </motion.div>
+                  <motion.div whileHover={{ x: 5 }}>
+                    <a 
+                      href="https://github.com/ranjit-me"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    >
+                      <Github className="w-4 h-4 mr-2" />
+                      View Projects
+                    </a>
+                  </motion.div>
+                </div>
+              </div>
+            </div>
+
+            {/* Copyright */}
+            <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <p className="text-slate-600 dark:text-slate-400 text-sm">
+                  © 2025 Ranjit Bichukale. All rights reserved.
+                </p>
+                <p className="text-slate-500 dark:text-slate-500 text-sm">
+                  Built with Next.js, TypeScript & Tailwind CSS
+                </p>
+              </div>
+            </div>
+          </div>
+        </footer>
+
+        {/* Scroll to Top Button */}
+        <AnimatePresence>
+          {showScrollTop && (
+            <motion.div
+              className="fixed bottom-6 right-6 z-50"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Button
+                onClick={scrollToTop}
+                size="lg"
+                className="rounded-full p-3 bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <ChevronUp className="w-6 h-6" />
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
